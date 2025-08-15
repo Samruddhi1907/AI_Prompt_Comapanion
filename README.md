@@ -2,8 +2,6 @@
 
 ### An Interactive Full-Stack AI Chat Application
 
-![Project Screenshot Placeholder](https://placehold.co/800x450/EAE7ED/333333?text=Add+your+project+screenshot+here)
-
 ## Project Overview
 
 The **AI Prompt Companion** is a robust, full-stack web application that provides a chat interface for interacting with a Large Language Model (LLM). It demonstrates a complete client-server architecture where a **Python Flask backend** securely manages the AI API communication and a responsive **HTML/JavaScript frontend** delivers a dynamic user experience.
