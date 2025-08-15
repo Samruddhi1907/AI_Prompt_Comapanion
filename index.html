@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Prompt Companion</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts - Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar for better aesthetics */
+        .chat-history::-webkit-scrollbar {
+            width: 8px;
+        }
+        .chat-history::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        .chat-history::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        .chat-history::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        /* Styling for code blocks rendered by Marked.js */
+        .chat-bubble pre {
+            background-color: #2d2d2d; /* Dark background for code */
+            color: #f8f8f2; /* Light text for code */
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto; /* Enable horizontal scrolling for long lines */
+            font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace; /* Monospace font */
+            font-size: 0.875rem; /* Smaller font size for code */
+            line-height: 1.4;
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .chat-bubble code {
+            font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+            font-size: 0.875rem;
+            background-color: rgba(0, 0, 0, 0.1); /* Light background for inline code */
+            padding: 0.1em 0.3em;
+            border-radius: 0.25rem;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100 flex items-center justify-center p-8">
+
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col h-[90vh] overflow-hidden border border-gray-200">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-blue-600 to-purple-700 text-white p-5 rounded-t-2xl shadow-lg">
+            <h1 class="text-3xl font-bold text-center drop-shadow-md">AI Prompt Companion</h1>
+            <p class="text-sm text-center opacity-90 mt-1">Your intelligent assistant for various tasks.</p>
+        </div>
+
+        <!-- Chat History Display Area -->
+        <div id="chat-history" class="flex-1 p-6 overflow-y-auto space-y-5 chat-history">
+            <div class="text-center text-gray-500 mt-10">
+                <p class="text-lg">Type a message to start chatting with your AI companion!</p>
+                <p class="text-sm mt-2">Try "Summarize this text" or "Write Python code for X."</p>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="p-4 border-t border-gray-200 flex items-center bg-gray-50 rounded-b-2xl">
+            <input
+                type="text"
+                id="user-input"
+                class="flex-1 p-3.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 placeholder-gray-400 shadow-sm transition-all duration-200 ease-in-out"
+                placeholder="Type your prompt here..."
+            />
+            <button
+                id="send-button"
+                class="ml-4 px-7 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200 ease-in-out transform hover:scale-105 active:scale-95"
+            >
+                Send
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const chatHistoryDiv = document.getElementById('chat-history');
+        const userInputField = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+
+        let conversationHistory = [];
+
+        const scrollToBottom = () => {
+            chatHistoryDiv.scrollTop = chatHistoryDiv.scrollHeight;
+        };
+
+        const appendMessage = (role, type, text, isLoading = false) => {
+            const messageWrapper = document.createElement('div');
+            messageWrapper.className = `flex ${role === 'user' ? 'justify-end' : 'justify-start'}`;
+
+            const messageBubble = document.createElement('div');
+            messageBubble.className = `max-w-[75%] p-4 rounded-xl shadow-md ${
+                role === 'user'
+                    ? 'bg-blue-500 text-white rounded-br-none'
+                    : 'bg-gray-200 text-gray-800 rounded-bl-none chat-bubble' /* Added chat-bubble class */
+            } transition-all duration-300 ease-out transform scale-95 opacity-0`;
+
+            const messageType = document.createElement('div');
+            messageType.className = `text-xs font-semibold mb-1 ${role === 'user' ? 'text-blue-200' : 'text-gray-600'}`;
+            messageType.textContent = role === 'user' ? 'You' : `AI (${type})`;
+
+            const messageText = document.createElement('div');
+            messageText.className = 'text-base';
+            
+            if (isLoading) {
+                messageText.innerHTML = '<div class="flex items-center"><svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Thinking...</div>';
+            } else {
+                // Use marked.parse() to convert Markdown to HTML
+                messageText.innerHTML = marked.parse(text);
+            }
+
+            messageBubble.appendChild(messageType);
+            messageBubble.appendChild(messageText);
+            messageWrapper.appendChild(messageBubble);
+            chatHistoryDiv.appendChild(messageWrapper);
+
+            setTimeout(() => {
+                messageBubble.classList.remove('scale-95', 'opacity-0');
+                messageBubble.classList.add('scale-100', 'opacity-100');
+            }, 50);
+
+            scrollToBottom();
+            return messageBubble;
+        };
+
+        const getPromptCategory = (promptText) => {
+            const lowerCasePrompt = promptText.toLowerCase();
+            if (lowerCasePrompt.includes('summarize') || lowerCasePrompt.includes('summary')) return 'Summarization';
+            if (lowerCasePrompt.includes('code') || lowerCasePrompt.includes('function') || lowerCasePrompt.includes('script')) return 'Code Help';
+            if (lowerCasePrompt.includes('grammar') || lowerCasePrompt.includes('proofread') || lowerCasePrompt.includes('correct')) return 'Grammar Check';
+            if (lowerCasePrompt.includes('hello') || lowerCasePrompt.includes('hi') || lowerCasePrompt.includes('hey')) return 'Greeting';
+            if (lowerCasePrompt.includes('advice') || lowerCasePrompt.includes('suggest') || lowerCasePrompt.includes('recommend')) return 'Advice/Suggestion';
+            if (lowerCasePrompt.includes('what is') || lowerCasePrompt.includes('explain') || lowerCasePrompt.includes('define')) return 'Information Retrieval';
+            if (lowerCasePrompt.includes('tell a story') || lowerCasePrompt.includes('write a story')) return 'Creative Writing';
+            if (lowerCasePrompt.includes('business idea') || lowerCasePrompt.includes('startup')) return 'Business Idea Generation';
+            if (lowerCasePrompt.includes('exit') || lowerCasePrompt.includes('bye') || lowerCasePrompt.includes('quit')) return 'Farewell';
+            return 'General Question';
+        };
+
+        const getAiResponseFromBackend = async (userPrompt, currentChatHistory) => {
+            const backendUrl = 'http://127.0.0.1:5000/chat';
+
+            try {
+                const response = await fetch(backendUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userPrompt: userPrompt, chatHistory: currentChatHistory })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.error("Backend/AI API Error Response:", errorData);
+                    return `Error: ${errorData.error || response.statusText}`;
+                }
+
+                const result = await response.json();
+                console.log("Backend Response:", result);
+
+                if (result.response) {
+                    return result.response;
+                } else {
+                    console.error("Backend response structure unexpected or empty content:", result);
+                    return "Sorry, I couldn't get a clear response from the AI via the backend.";
+                }
+            } catch (error) {
+                console.error("Error calling backend:", error);
+                return "An error occurred while connecting to the backend. Please ensure the Python server is running.";
+            }
+        };
+
+        const handleSendMessage = async () => {
+            const userInput = userInputField.value.trim();
+            if (userInput === '') return;
+
+            if (chatHistoryDiv.querySelector('.text-center.text-gray-500')) {
+                chatHistoryDiv.innerHTML = '';
+            }
+
+            appendMessage('user', 'User Input', userInput);
+            conversationHistory.push({ role: 'user', type: 'User Input', text: userInput });
+
+            const aiLoadingBubble = appendMessage('ai', getPromptCategory(userInput), '', true);
+
+            userInputField.value = '';
+            sendButton.disabled = true;
+
+            try {
+                const aiResponseText = await getAiResponseFromBackend(userInput, conversationHistory);
+                
+                // Update the loading bubble with the actual response, parsed as Markdown
+                aiLoadingBubble.querySelector('.text-base').innerHTML = marked.parse(aiResponseText);
+
+                conversationHistory.push({
+                    role: 'ai',
+                    type: getPromptCategory(userInput),
+                    text: aiResponseText // Store raw text in history for API consistency
+                });
+
+            } catch (error) {
+                console.error("Error in AI response processing:", error);
+                aiLoadingBubble.querySelector('.text-base').textContent = "Error: Could not get AI response.";
+                conversationHistory.push({
+                    role: 'ai',
+                    type: 'Error',
+                    text: "Error: Could not get AI response."
+                });
+            } finally {
+                sendButton.disabled = false;
+                scrollToBottom();
+            }
+        };
+
+        sendButton.addEventListener('click', handleSendMessage);
+        userInputField.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !sendButton.disabled) {
+                handleSendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
